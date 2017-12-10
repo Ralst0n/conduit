@@ -53,7 +53,7 @@ class UserManager(BaseUserManager):
 
 
 
-class User(AbstractBaseUser, PermissionsMixin):
+class User(AbstractBaseUser, PermissionsMixin, TimestampedModel):
     #Each 'User' needs a human-readable unique identifier
     #to represent said 'User' in the UI.
     # Index this column in db to improve lookup performance
@@ -74,11 +74,6 @@ class User(AbstractBaseUser, PermissionsMixin):
     #most users won't/shouldn't have access to it
     is_staff = models.BooleanField(default=False)
 
-    #timestamp for when 'User' object created
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    #timestamp representing when 'User' was last updated.
-    updated_at = models.DateTimeField(auto_now=True)
 
     #More fields required by Django when creating a custom user model.
 
