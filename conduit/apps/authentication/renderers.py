@@ -1,24 +1,18 @@
-import json
+from conduit.apps.core.renderers import ConduitJSONRenderer
 
-from rest_framework.renderers import JSONRenderer
-
-class UserJSONRenderer(JSONRenderer):
-    charset = 'utf-8'
+class UserJSONRenderer(ConduitJSONRenderer):
+    object_label='user'
 
     def render(self, data, media_type=None, renderer_context=None):
-
-        #use default JSONRenderer to render errors
-        errors = data.get('errors', None)
 
         #Byte objects don't serialize well, so we decode token
         token = data.get('token', None)
 
-        if errors is not None:
-            return super(UserJSONRenderer, self).render(data)
-
+        #Place decoded token back in place of its coded brethren
         if token is not None and isinstance(token, bytes):
             data['token'] = token.decode('utf-8')
 
-        return json.dumps({
-            'user': data
-        })
+        # Once token is decoded, simply use the super(ConduitJSONRenderer)
+        # render method on the data
+        return super(UserJSONRenderer, self).render(data)
+#
