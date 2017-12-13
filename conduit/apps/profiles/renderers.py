@@ -1,4 +1,4 @@
-from conduit.app.core.renderers import ConduitJSONRenderer
+from conduit.apps.core.renderers import ConduitJSONRenderer
 
 class ProfileJSONRenderer(ConduitJSONRenderer):
     object_label= 'profile'

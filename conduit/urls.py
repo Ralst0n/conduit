@@ -19,5 +19,8 @@ from django.conf.urls import url
 urlpatterns = [
     path(r'admin/', admin.site.urls),
 
-    url(r'api/', include('conduit.apps.authentication.urls')),
+    path('api/', include('conduit.apps.articles.urls'), name='articles'),
+    url(r'api/', include('conduit.apps.authentication.urls'), name='authentication'),
+    path('api/', include('conduit.apps.profiles.urls'), name='profiles')
+
 ]

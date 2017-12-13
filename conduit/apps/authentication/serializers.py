@@ -1,6 +1,8 @@
 from django.contrib.auth import authenticate
+
 from rest_framework import serializers
 
+from conduit.apps.profiles.serializers import ProfileSerializer
 from .models import User
 
 class RegistrationSerializer(serializers.ModelSerializer):
@@ -85,9 +87,16 @@ class UserSerializer(serializers.ModelSerializer):
         write_only=True
     )
 
+    profile = ProfileSerializer(write_only=True)
+
+    bio = serializers.CharField(source='profile.bio', read_only=True)
+    image = serializers.CharField(source='profile.image', read_only=True)
     class Meta:
         model = User
-        fields = ('email', 'username', 'password', 'token',)
+        fields = (
+            'email', 'username', 'password', 'token',
+            'profile', 'bio', 'image',
+            )
 
         # use 'read_only_fields' option rather than 'read_only=True'
         # a la password fields above, when nothing else about field
@@ -102,6 +111,8 @@ class UserSerializer(serializers.ModelSerializer):
         # so we must remove password field from 'validated_data' first
         password = validated_data.pop('password', None)
 
+        # Like passwords, we have to handle profiles separately.
+        profile_data = validated_data.pop('profile', {})
         for(key, value) in validated_data.items():
             # set the validated_data items on the current 'User'
             setattr(instance, key, value)
@@ -112,5 +123,12 @@ class UserSerializer(serializers.ModelSerializer):
 
         # After everything has been updated save the model
         instance.save()
+
+        for (key, value) in profile_data.items():
+            # Same as with other validated_data,
+            # but this is on the profile model
+            setattr(instance.profile, key, value)
+
+        instance.profile.save()
 
         return instance
