@@ -30,17 +30,33 @@ class ArticleViewSet(mixins.CreateModelMixin,
 
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+    def list(self, request):
+        serializer_context = {'request': request}
+        serializer_instances = self.queryset.all()
+
+        serializer = self.serializer_class(
+            serializer_instances,
+            context=serialziers_context,
+            many=True
+        )
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
     def retrieve(self, request, slug):
+        serializer_context = {'request': request}
         try:
             serializer_instance = self.queryset.get(slug=slug)
         except Article.DoesNotExist:
             raise NotFound('An article with this slug does not exist')
 
-        serializer = self.serializer_class(serializer_instance)
+        serializer = self.serializer_class(
+            serializer_instance,
+            context=serializer_context
+            )
 
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def update(self, request, slug):
+        serializer_context = {'request': request}
         try:
             serializer_instance = self.queryset.get(slug=slug)
         except Article.DoesNotExist:
@@ -49,7 +65,10 @@ class ArticleViewSet(mixins.CreateModelMixin,
         serializer_data = request.data.get('article', {})
 
         serializer = self.serializer_class(
-            serializer_instance, data=serializer_data, partial=True
+            serializer_instance,
+            context=serializer_context,
+            data=serializer_data,
+            partial=True
         )
 
         serializer.is_valid(raise_exception=True)
@@ -57,7 +76,7 @@ class ArticleViewSet(mixins.CreateModelMixin,
 
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-class CommentListCreateAPIView(generics.ListCreateView):
+class CommentsListCreateAPIView(generics.ListCreateAPIView):
     lookup_field = 'article__slug'
     lookup_url_kwarg = 'article_slug'
     permission_classes = (IsAuthenticatedOrReadOnly,)
@@ -67,12 +86,12 @@ class CommentListCreateAPIView(generics.ListCreateView):
     )
 
     renderer_classes = (CommentJSONRenderer,)
-    serializer_class = CommentJSONRenderer
+    serializer_class = CommentSerializer
 
     def filter_queryset(self, queryset):
         filters = {self.lookup_field: self.kwargs[self.lookup_url_kwarg]}
 
-        return queryset.flter(**filters)
+        return queryset.filter(**filters)
 
     def create(self, request, article_slug=None):
         data = request.data.get('comment', {})
@@ -87,4 +106,19 @@ class CommentListCreateAPIView(generics.ListCreateView):
         serializer.is_valid()
         serializer.save()
 
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+class CommentsDestroyAPIView(generics.DestroyAPIView):
+    lookup_url_kwarg ='comment_pk'
+    permission_classes = (IsAuthenticatedOrReadOnly,)
+    queryset = Comment.objects.all()
+
+    def destroy(self,request, article_slug=None, comment_pk=None):
+        try:
+            comment = Comment.objects.get(pk=comment_pk)
+        except Comment.DoesNotExist:
+            raise NotFound('A comment with this ID does not exist.')
+
+        comment.delete()
+
+        return Response(None, status=status.HTTP_204_NO_CONTENT)
