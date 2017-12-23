@@ -1,11 +1,49 @@
 from rest_framework import generics, mixins, status, viewsets
 from rest_framework.exceptions import NotFound
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from rest_framework.permissions import (
+    IsAuthenticated, IsAuthenticatedOrReadOnly
+)
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from .models import Article, Comment
 from .renderers import ArticleJSONRenderer, CommentJSONRenderer
 from .serializers import ArticleSerializer, CommentSerializer
+
+class ArticlesFavoriteAPIView(APIView):
+    permission_classes = (IsAuthenticated,)
+    renderer_classes = (ArticleJSONRenderer,)
+    serializer_class = (ArticleSerializer)
+
+    def delete(self, request, article_slug=None):
+        profile = self.request.user.profile
+        serializer_context = {'request':request}
+
+        try:
+            article = Article.objects.get(slug=article_slug)
+        except Article.DoesNotExist:
+            raise NotFound('An article with this slug was not found.')
+
+        profile.unfavorite(article)
+
+        serializer = self.serializer_class(article, context=serializer_context)
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request, article_slug=None):
+        profile = self.request.user.profile
+        serializer_context = {'request': request}
+
+        try:
+            article = Article.objects.get(slug=article_slug)
+        except Article.DoesNotExist:
+            raise NotFound('An article with this slug was not found')
+
+        profile.favorite(article)
+
+        serializer = self.serializer_class(article, context=serializer_context)
+
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 class ArticleViewSet(mixins.CreateModelMixin,
                         mixins.ListModelMixin,
@@ -19,7 +57,9 @@ class ArticleViewSet(mixins.CreateModelMixin,
     serializer_class = ArticleSerializer
 
     def create(self, request):
-        serializer_context = {'author': request.user.profile}
+        serializer_context = {
+            'author': request.user.profile,
+            'request': request}
         serializer_data = request.data.get('article', {})
 
         serializer = self.serializer_class(
@@ -36,11 +76,12 @@ class ArticleViewSet(mixins.CreateModelMixin,
 
         serializer = self.serializer_class(
             serializer_instances,
-            context=serialziers_context,
+            context=serializer_context,
             many=True
         )
 
         return Response(serializer.data, status=status.HTTP_200_OK)
+
     def retrieve(self, request, slug):
         serializer_context = {'request': request}
         try:
@@ -63,7 +104,8 @@ class ArticleViewSet(mixins.CreateModelMixin,
             raise NotFound('An article with this slug does not exist.')
 
         serializer_data = request.data.get('article', {})
-
+        # Serializers, by default require values for all required fields.
+        # This can be avoided by including partial=True as we've done here.
         serializer = self.serializer_class(
             serializer_instance,
             context=serializer_context,
